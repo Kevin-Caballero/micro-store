@@ -1,0 +1,84 @@
+@startuml sequence
+title Order Creation Flow - Microservices Communication
+
+skinparam backgroundColor #F7F8FC
+
+title Order Creation Flow - Microservices Communication
+
+actor "Client" as client
+participant "Gateway" as gateway
+participant "NATS" as nats
+participant "Products Service" as products
+participant "Orders Service" as orders
+database "Products DB" as products_db
+database "Orders DB" as orders_db
+
+== Order Creation Process ==
+
+client -> gateway : POST /orders\n{productId, quantity}
+activate gateway
+
+gateway -> nats : publish("product.validate", {productId, quantity})
+activate nats
+
+nats -> products : receive("product.validate")
+activate products
+
+products -> products_db : findProduct(productId)
+activate products_db
+products_db --> products : product data
+deactivate products_db
+
+products -> products_db : updateStock(productId, -quantity)
+activate products_db
+products_db --> products : stock updated
+deactivate products_db
+
+products -> nats : publish("product.validated", {productId, available: true})
+deactivate products
+
+nats -> orders : receive("product.validated")
+activate orders
+
+orders -> orders_db : createOrder({productId, quantity, status: "pending"})
+activate orders_db
+orders_db --> orders : order created
+deactivate orders_db
+
+orders -> nats : publish("order.created", {orderId, status: "created"})
+deactivate orders
+
+nats -> gateway : receive("order.created")
+deactivate nats
+
+gateway --> client : 201 Created\n{orderId, status: "created"}
+deactivate gateway
+
+== Alternative: Product Not Available ==
+
+client -> gateway : POST /orders\n{productId, quantity}
+activate gateway
+
+gateway -> nats : publish("product.validate", {productId, quantity})
+activate nats
+
+nats -> products : receive("product.validate")
+activate products
+
+products -> products_db : findProduct(productId)
+activate products_db
+products_db --> products : product data
+deactivate products_db
+
+alt insufficient stock
+    products -> nats : publish("product.validation.failed", {productId, reason: "insufficient_stock"})
+    deactivate products
+    
+    nats -> gateway : receive("product.validation.failed")
+    deactivate nats
+    
+    gateway --> client : 400 Bad Request\n{error: "Insufficient stock"}
+    deactivate gateway
+end
+
+@enduml

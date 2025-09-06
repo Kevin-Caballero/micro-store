@@ -1,0 +1,27 @@
+{
+  "name": "micro-store",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "docker-compose up --build",
+    "stop": "docker-compose down",
+    "update:shared": "node scripts/update-shared.js",
+    "pull": "node scripts/pull.js",
+    "prepare": "node scripts/prepare.js",
+    "setup": "npm run pull && npm run prepare && npm run start"
+  },
+  "author": "Kevin Caballero",
+  "license": "ISC",
+  "devDependencies": {
+    "cross-spawn": "^7.0.3"
+  },
+  "services": {
+    "gateway": "https://github.com/Kevin-Caballero/micro-store-gateway.git",
+    "products": "https://github.com/Kevin-Caballero/micro-store-products.git",
+    "orders": "https://github.com/Kevin-Caballero/micro-store-orders.git"
+  }
+}

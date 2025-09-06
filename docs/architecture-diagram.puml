@@ -1,0 +1,156 @@
+@startuml architecture
+title Microservices Architecture - Micro Store Platform
+
+skinparam backgroundColor #F7F8FC
+skinparam shadowing false
+
+' External clients
+rectangle "External Clients" as clients #LightBlue {
+  component "Web App" as webapp
+  component "Mobile App" as mobile
+  component "Desktop App" as desktop
+}
+
+' API Gateway
+rectangle "API Gateway" as gateway_box #LightCoral {
+  component "Gateway Service" as gateway
+  note right of gateway
+    Port: 3000
+    Framework: NestJS
+    Responsibilities:
+    - Authentication & Authorization
+    - Request Routing
+    - Rate Limiting
+    - API Composition
+  end note
+}
+
+' Message Broker
+rectangle "Message Broker" as message_broker #Orange {
+  component "NATS Server" as nats
+  note right of nats
+    Ports: 4222 (Client), 8222 (HTTP)
+    Type: Pub/Sub Messaging
+    Features:
+    - High Performance
+    - Lightweight
+    - Clustering Support
+  end note
+}
+
+' Products Microservice
+rectangle "Products Service" as products_box #DarkSlateGray {
+  component "Products API" as products_service
+  component "Products Controller" as products_controller
+  component "Products Business Logic" as products_logic
+  component "Prisma ORM" as products_prisma
+  
+  products_controller --> products_logic
+  products_logic --> products_prisma
+  
+  note right of products_service
+    Port: 3001
+    Database: SQLite
+    Responsibilities:
+    - Product Catalog Management
+    - Inventory Control
+    - Product Search & Filtering
+  end note
+}
+
+' Products Database
+database "Products DB" as products_db #LightGreen {
+  component "SQLite Database" as sqlite_db
+  note right of sqlite_db
+    Type: SQLite
+    File: dev.db
+    Schema Management: Prisma Migrations
+  end note
+}
+
+' Orders Microservice
+rectangle "Orders Service" as orders_box #DarkSlateGray {
+  component "Orders API" as orders_service
+  component "Orders Controller" as orders_controller
+  component "Orders Business Logic" as orders_logic
+  component "Prisma ORM" as orders_prisma
+  
+  orders_controller --> orders_logic
+  orders_logic --> orders_prisma
+  
+  note right of orders_service
+    Port: 3002
+    Database: PostgreSQL
+    Responsibilities:
+    - Order Processing
+    - Payment Integration
+    - Order Status Management
+  end note
+}
+
+' Orders Database
+database "Orders DB" as orders_db #LightGreen {
+  component "PostgreSQL" as postgres_db
+  note right of postgres_db
+    Type: PostgreSQL 16.2
+    Port: 5432
+    Database: ordersdb
+    Health Checks: Enabled
+  end note
+}
+
+' Shared Libraries
+package "Shared Libraries" as shared #Plum {
+  component "Common DTOs" as shared_dtos
+  component "Order DTOs" as order_dtos
+  component "Product DTOs" as product_dtos
+  component "Helpers" as helpers
+  
+  note right of shared
+    Type: Shared NPM Package
+    Purpose: Code Reusability
+    Contains:
+    - Data Transfer Objects
+    - Common Utilities
+    - Type Definitions
+  end note
+}
+
+' Docker Infrastructure
+rectangle "Docker Environment" as docker #LightYellow {
+  note right of docker
+    Orchestration: Docker Compose
+    Network: Internal Docker Network
+    Volumes: Development Hot Reload
+    Environment: Development
+  end note
+}
+
+' Client connections
+clients --> gateway : "HTTP/REST API\n(Port 3000)"
+
+' Gateway connections
+gateway --> nats : "Publish/Subscribe\nMessages"
+
+' Service connections to NATS
+nats --> products_service : "Event-driven\nCommunication"
+nats --> orders_service : "Event-driven\nCommunication"
+
+' Database connections
+products_prisma --> sqlite_db : "ORM Queries\n& Migrations"
+orders_prisma --> postgres_db : "ORM Queries\n& Migrations"
+
+' Shared library usage
+gateway ..> shared : "imports"
+products_service ..> shared : "imports"
+orders_service ..> shared : "imports"
+
+' Docker environment contains all services
+docker ..> gateway_box
+docker ..> products_box
+docker ..> orders_box
+docker ..> message_broker
+docker ..> products_db
+docker ..> orders_db
+
+@enduml

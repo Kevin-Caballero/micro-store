@@ -1,0 +1,163 @@
+@startuml components
+title Component Diagram - Microservices Internal Structure
+
+skinparam backgroundColor #F7F8FC
+skinparam componentStyle rectangle
+
+package "Gateway Service" as gateway_package {
+  
+  component "App Module" as gateway_app #Orange
+  
+  package "Products Module" as gateway_products_module {
+    component "Products Controller" as gateway_products_controller #LightBlue
+    component "Products Service" as gateway_products_service #LightCoral
+  }
+  
+  package "Orders Module" as gateway_orders_module {
+    component "Orders Controller" as gateway_orders_controller #LightBlue
+    component "Orders Service" as gateway_orders_service #LightCoral
+  }
+  
+  package "Transport Layer" as gateway_transport {
+    component "NATS Module" as gateway_nats #Plum
+    component "NATS Client" as gateway_nats_client #Plum
+  }
+  
+  gateway_app --> gateway_products_module
+  gateway_app --> gateway_orders_module
+  gateway_app --> gateway_transport
+  
+  gateway_products_controller --> gateway_products_service
+  gateway_orders_controller --> gateway_orders_service
+  
+  gateway_products_service --> gateway_nats_client
+  gateway_orders_service --> gateway_nats_client
+}
+
+package "Products Service" as products_package {
+  
+  component "App Module" as products_app #Orange
+  
+  package "Products Module" as products_module {
+    component "Products Controller" as products_controller #LightBlue
+    component "Products Service" as products_service #LightCoral
+    component "Products Repository" as products_repository #LightCoral
+  }
+  
+  package "Prisma Module" as products_prisma_module {
+    component "Prisma Service" as products_prisma #LightGreen
+    component "Prisma Client" as products_prisma_client #LightGreen
+  }
+  
+  package "Transport Layer" as products_transport {
+    component "NATS Module" as products_nats #Plum
+    component "Message Handlers" as products_handlers #Plum
+  }
+  
+  products_app --> products_module
+  products_app --> products_prisma_module
+  products_app --> products_transport
+  
+  products_controller --> products_service
+  products_service --> products_repository
+  products_repository --> products_prisma
+  products_prisma --> products_prisma_client
+  
+  products_handlers --> products_service
+}
+
+package "Orders Service" as orders_package {
+  
+  component "App Module" as orders_app #Orange
+  
+  package "Orders Module" as orders_module {
+    component "Orders Controller" as orders_controller #LightBlue
+    component "Orders Service" as orders_service #LightCoral
+    component "Orders Repository" as orders_repository #LightCoral
+  }
+  
+  package "Prisma Module" as orders_prisma_module {
+    component "Prisma Service" as orders_prisma #LightGreen
+    component "Prisma Client" as orders_prisma_client #LightGreen
+  }
+  
+  package "Transport Layer" as orders_transport {
+    component "NATS Module" as orders_nats #Plum
+    component "Message Handlers" as orders_handlers #Plum
+  }
+  
+  orders_app --> orders_module
+  orders_app --> orders_prisma_module
+  orders_app --> orders_transport
+  
+  orders_controller --> orders_service
+  orders_service --> orders_repository
+  orders_repository --> orders_prisma
+  orders_prisma --> orders_prisma_client
+  
+  orders_handlers --> orders_service
+}
+
+' External Components
+cloud "NATS Server" as nats_server #Orange
+
+database "SQLite DB" as sqlite_db #LightGreen {
+  component "Products Data"
+  component "Categories Data"
+  component "Inventory Data"
+}
+
+database "PostgreSQL DB" as postgres_db #LightGreen {
+  component "Orders Data"
+  component "Order Items Data"
+  component "Customer Data"
+}
+
+package "Shared Library" as shared_lib {
+  component "Common DTOs" as common_dtos
+  component "Product DTOs" as product_dtos
+  component "Order DTOs" as order_dtos
+  component "Helpers" as helpers
+  component "Enums" as enums
+}
+
+' External connections
+gateway_nats_client --> nats_server : "Publish/Subscribe"
+products_handlers <-- nats_server : "Message Events"
+orders_handlers <-- nats_server : "Message Events"
+
+' Database connections
+products_prisma_client --> sqlite_db : "SQL Queries"
+orders_prisma_client --> postgres_db : "SQL Queries"
+
+' Shared library dependencies
+gateway_package ..> shared_lib : "imports"
+products_package ..> shared_lib : "imports"
+orders_package ..> shared_lib : "imports"
+
+' Notes
+note right of nats_server
+  Message Patterns:
+  - product.validate
+  - product.validated
+  - order.create
+  - order.created
+  - order.updated
+end note
+
+note right of sqlite_db
+  Schema:
+  - Products table
+  - Categories table
+  - Managed by Prisma migrations
+end note
+
+note right of postgres_db
+  Schema:
+  - Orders table
+  - OrderItems table
+  - Health checks enabled
+  - Managed by Prisma migrations
+end note
+
+@enduml

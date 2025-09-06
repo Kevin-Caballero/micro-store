@@ -1,0 +1,59 @@
+@startuml architecture
+title Microservices Architecture - Micro Store
+
+' External actors
+actor "Web Client" as web
+actor "Mobile Client" as mobile
+
+' Main components
+rectangle "API Gateway" as gateway #LightCoral
+rectangle "NATS Server" as nats #Orange
+rectangle "Products Service" as products #LightBlue
+rectangle "Orders Service" as orders #LightBlue
+database "SQLite" as sqlite #LightGreen
+database "PostgreSQL" as postgres #LightGreen
+
+' Shared library
+package "Shared DTOs" as shared #Plum
+
+' Connections
+web --> gateway : HTTP/REST
+mobile --> gateway : HTTP/REST
+
+gateway --> nats : Publish/Subscribe
+nats --> products : Events
+nats --> orders : Events
+
+products --> sqlite : ORM Queries
+orders --> postgres : ORM Queries
+
+gateway ..> shared : imports
+products ..> shared : imports
+orders ..> shared : imports
+
+' Notes
+note right of gateway
+  Port: 3000
+  Routes requests
+  Authentication
+end note
+
+note right of nats
+  Ports: 4222, 8222
+  Message broker
+  Event-driven communication
+end note
+
+note right of products
+  Port: 3001
+  Product catalog
+  Inventory management
+end note
+
+note right of orders
+  Port: 3002
+  Order processing
+  Payment integration
+end note
+
+@enduml
