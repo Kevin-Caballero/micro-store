@@ -60,7 +60,7 @@ async function prepareServices() {
     const prismaSchemaPath = path.join(serviceDir, "prisma", "schema.prisma");
     if (await existsAsync(prismaSchemaPath)) {
       console.log(`🗄️  Generating Prisma client for ${serviceName}...`);
-      
+
       const prismaGenerateResult = spawn.sync("npx", ["prisma", "generate"], {
         cwd: serviceDir,
         stdio: "inherit",
