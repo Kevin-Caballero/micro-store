@@ -56,6 +56,22 @@ async function prepareServices() {
       process.exit(1);
     }
 
+    // Check if Prisma schema exists and generate client if needed
+    const prismaSchemaPath = path.join(serviceDir, "prisma", "schema.prisma");
+    if (await existsAsync(prismaSchemaPath)) {
+      console.log(`🗄️  Generating Prisma client for ${serviceName}...`);
+      
+      const prismaGenerateResult = spawn.sync("npx", ["prisma", "generate"], {
+        cwd: serviceDir,
+        stdio: "inherit",
+      });
+
+      if (prismaGenerateResult.status !== 0) {
+        console.error(`❌ Failed to generate Prisma client for ${serviceName}`);
+        process.exit(1);
+      }
+    }
+
     // Check if build script exists
     try {
       const servicePackageJson = JSON.parse(
