@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "start": "docker-compose up --build",
+    "start": "docker-compose up --build -d",
     "stop": "docker-compose down",
     "update:shared": "node scripts/update-shared.js",
     "pull": "node scripts/pull.js",
