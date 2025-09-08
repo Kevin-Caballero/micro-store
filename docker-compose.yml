@@ -72,3 +72,20 @@ services:
         condition: service_healthy
       nats-server:
         condition: service_started
+
+  auth:
+    container_name: auth
+    build: ./services/auth
+    ports:
+      - "${AUTH_PORT}:3003"
+    volumes:
+      - ./services/auth/src:/usr/src/app/src
+    command: npm run start:dev
+    environment:
+      - PORT=${AUTH_PORT}
+      - NATS_SERVERS=${NATS_SERVERS}
+      - BASE_URL=${AUTH_BASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+    depends_on:
+      - nats-server
