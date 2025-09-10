@@ -20,6 +20,7 @@
     "cross-spawn": "^7.0.3"
   },
   "services": {
+    "auth": "https://github.com/Kevin-Caballero/micro-store-auth.git",
     "gateway": "https://github.com/Kevin-Caballero/micro-store-gateway.git",
     "products": "https://github.com/Kevin-Caballero/micro-store-products.git",
     "orders": "https://github.com/Kevin-Caballero/micro-store-orders.git"
