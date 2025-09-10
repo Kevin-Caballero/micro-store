@@ -42,17 +42,17 @@ Esta documentación contiene los diagramas UML que representan la arquitectura d
 
 ### 3. Diagrama de Secuencia (`sequence-diagram.puml`)
 
-**Propósito:** Ilustra el flujo de comunicación para procesos de autenticación y creación de órdenes.
+**Propósito:** Ilustra el flujo de comunicación usando el patrón Request-Response de NATS.
 
 **Flujos incluidos:**
 
-- Proceso de registro de usuarios
-- Proceso de autenticación y login
-- Proceso de validación de tokens JWT
-- Proceso exitoso de creación de orden con autenticación
+- Proceso de registro de usuarios (request-response)
+- Proceso de autenticación y login (request-response)
+- Proceso de validación de tokens JWT (request-response)
+- Proceso de creación de orden con autenticación (request-response)
 - Manejo de errores por stock insuficiente
 - Manejo de errores de autenticación
-- Comunicación asíncrona entre servicios vía NATS
+- Comunicación síncrona entre servicios vía NATS
 
 ### 4. Diagrama de Componentes (`component-diagram.puml`)
 
@@ -121,36 +121,37 @@ puml generate docs/component-diagram.puml -o docs/images/
 
 ## 📊 Métricas y Puertos
 
-| Servicio | Puerto    | Base de Datos | Propósito                      |
-| -------- | --------- | ------------- | ------------------------------ |
-| Gateway  | 3000      | -             | API REST y ruteo               |
-| Auth     | 3003      | MongoDB       | Autenticación y autorización   |
-| Products | 3001      | SQLite        | Gestión de productos           |
-| Orders   | 3002      | PostgreSQL    | Gestión de órdenes             |
-| NATS     | 4222/8222 | -             | Message broker                 |
-| MongoDB  | 27017     | -             | Base de datos de usuarios      |
+| Servicio | Puerto    | Base de Datos | Propósito                    |
+| -------- | --------- | ------------- | ---------------------------- |
+| Gateway  | 3000      | -             | API REST y ruteo             |
+| Auth     | 3003      | MongoDB       | Autenticación y autorización |
+| Products | 3001      | SQLite        | Gestión de productos         |
+| Orders   | 3002      | PostgreSQL    | Gestión de órdenes           |
+| NATS     | 4222/8222 | -             | Message broker               |
+| MongoDB  | 27017     | -             | Base de datos de usuarios    |
 
 ## 🔄 Flujos de Comunicación
 
 ### Flujo Principal: Creación de Orden Autenticada
 
 1. Cliente → Gateway (Registro/Login HTTP REST)
-2. Gateway → NATS (Evento de autenticación)
+2. Gateway → NATS (Request de autenticación)
 3. Auth Service ← NATS (Validar credenciales/crear usuario)
-4. Auth Service → NATS (Token JWT generado)
-5. Gateway ← NATS (Respuesta de autenticación)
+4. Auth Service → NATS (Response con token JWT)
+5. Gateway ← NATS (Response de autenticación)
 6. Cliente ← Gateway (Token JWT)
 7. Cliente → Gateway (Crear orden con token)
-8. Gateway → NATS (Validar token)
+8. Gateway → NATS (Request verificar token)
 9. Auth Service ← NATS (Verificar JWT)
-10. Auth Service → NATS (Token válido)
-11. Gateway → NATS (Evento de validación de producto)
+10. Auth Service → NATS (Response token válido)
+11. Gateway → NATS (Request validar producto)
 12. Products Service ← NATS (Validar producto/stock)
-13. Products Service → NATS (Confirmación)
-14. Orders Service ← NATS (Crear orden)
-15. Orders Service → NATS (Orden creada)
-16. Gateway ← NATS (Respuesta)
-17. Cliente ← Gateway (Respuesta HTTP)
+13. Products Service → NATS (Response producto válido)
+14. Gateway → NATS (Request crear orden)
+15. Orders Service ← NATS (Crear orden)
+16. Orders Service → NATS (Response orden creada)
+17. Gateway ← NATS (Response final)
+18. Cliente ← Gateway (Respuesta HTTP)
 
 ### Ventajas de esta Arquitectura
 

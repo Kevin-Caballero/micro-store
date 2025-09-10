@@ -189,15 +189,14 @@ auth_package ..> shared_lib : "imports"
 
 ' Notes
 note right of nats_server
-  Message Patterns:
-  - auth.register
-  - auth.login
-  - auth.validate
-  - product.validate
-  - product.validated
-  - order.create
-  - order.created
-  - order.updated
+  Message Patterns (Request-Response):
+  - { cmd: 'register' }
+  - { cmd: 'login' }
+  - { cmd: 'verify' }
+  - { cmd: 'find_all_products' }
+  - { cmd: 'create_product' }
+  - { cmd: 'find_all_orders' }
+  - { cmd: 'create_order' }
 end note
 
 note right of sqlite_db
