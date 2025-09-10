@@ -99,6 +99,39 @@ database "Orders DB" as orders_db #LightGreen {
   end note
 }
 
+' Auth Microservice
+rectangle "Auth Service" as auth_box #DarkSlateGray {
+  component "Auth API" as auth_service
+  component "Auth Controller" as auth_controller
+  component "Auth Business Logic" as auth_logic
+  component "Prisma ORM" as auth_prisma
+  
+  auth_controller --> auth_logic
+  auth_logic --> auth_prisma
+  
+  note right of auth_service
+    Port: 3003
+    Database: MongoDB
+    Responsibilities:
+    - User Authentication
+    - JWT Token Management
+    - User Registration
+    - Password Encryption
+  end note
+}
+
+' Auth Database
+database "Auth DB" as auth_db #LightGreen {
+  component "MongoDB" as mongo_db
+  note right of mongo_db
+    Type: MongoDB
+    Port: 27017
+    Database: authdb
+    Replica Set: Enabled
+    Health Checks: Enabled
+  end note
+}
+
 ' Shared Libraries
 package "Shared Libraries" as shared #Plum {
   component "Common DTOs" as shared_dtos
@@ -135,22 +168,27 @@ gateway --> nats : "Publish/Subscribe\nMessages"
 ' Service connections to NATS
 nats --> products_service : "Event-driven\nCommunication"
 nats --> orders_service : "Event-driven\nCommunication"
+nats --> auth_service : "Event-driven\nCommunication"
 
 ' Database connections
 products_prisma --> sqlite_db : "ORM Queries\n& Migrations"
 orders_prisma --> postgres_db : "ORM Queries\n& Migrations"
+auth_prisma --> mongo_db : "ORM Queries\n& Models"
 
 ' Shared library usage
 gateway ..> shared : "imports"
 products_service ..> shared : "imports"
 orders_service ..> shared : "imports"
+auth_service ..> shared : "imports"
 
 ' Docker environment contains all services
 docker ..> gateway_box
 docker ..> products_box
 docker ..> orders_box
+docker ..> auth_box
 docker ..> message_broker
 docker ..> products_db
 docker ..> orders_db
+docker ..> auth_db
 
 @enduml

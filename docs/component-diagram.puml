@@ -8,6 +8,11 @@ package "Gateway Service" as gateway_package {
   
   component "App Module" as gateway_app #Orange
   
+  package "Auth Module" as gateway_auth_module {
+    component "Auth Controller" as gateway_auth_controller #LightBlue
+    component "Auth Service" as gateway_auth_service #LightCoral
+  }
+  
   package "Products Module" as gateway_products_module {
     component "Products Controller" as gateway_products_controller #LightBlue
     component "Products Service" as gateway_products_service #LightCoral
@@ -23,13 +28,16 @@ package "Gateway Service" as gateway_package {
     component "NATS Client" as gateway_nats_client #Plum
   }
   
+  gateway_app --> gateway_auth_module
   gateway_app --> gateway_products_module
   gateway_app --> gateway_orders_module
   gateway_app --> gateway_transport
   
+  gateway_auth_controller --> gateway_auth_service
   gateway_products_controller --> gateway_products_service
   gateway_orders_controller --> gateway_orders_service
   
+  gateway_auth_service --> gateway_nats_client
   gateway_products_service --> gateway_nats_client
   gateway_orders_service --> gateway_nats_client
 }
@@ -98,6 +106,40 @@ package "Orders Service" as orders_package {
   orders_handlers --> orders_service
 }
 
+package "Auth Service" as auth_package {
+  
+  component "App Module" as auth_app #Orange
+  
+  package "Auth Module" as auth_module {
+    component "Auth Controller" as auth_controller #LightBlue
+    component "Auth Service" as auth_service #LightCoral
+    component "Auth Repository" as auth_repository #LightCoral
+    component "JWT Service" as jwt_service #LightCoral
+  }
+  
+  package "Prisma Module" as auth_prisma_module {
+    component "Prisma Service" as auth_prisma #LightGreen
+    component "Prisma Client" as auth_prisma_client #LightGreen
+  }
+  
+  package "Transport Layer" as auth_transport {
+    component "NATS Module" as auth_nats #Plum
+    component "Message Handlers" as auth_handlers #Plum
+  }
+  
+  auth_app --> auth_module
+  auth_app --> auth_prisma_module
+  auth_app --> auth_transport
+  
+  auth_controller --> auth_service
+  auth_service --> auth_repository
+  auth_service --> jwt_service
+  auth_repository --> auth_prisma
+  auth_prisma --> auth_prisma_client
+  
+  auth_handlers --> auth_service
+}
+
 ' External Components
 cloud "NATS Server" as nats_server #Orange
 
@@ -113,10 +155,17 @@ database "PostgreSQL DB" as postgres_db #LightGreen {
   component "Customer Data"
 }
 
+database "MongoDB" as mongo_db #LightGreen {
+  component "Users Collection"
+  component "Authentication Data"
+  component "JWT Tokens"
+}
+
 package "Shared Library" as shared_lib {
   component "Common DTOs" as common_dtos
   component "Product DTOs" as product_dtos
   component "Order DTOs" as order_dtos
+  component "Auth DTOs" as auth_dtos
   component "Helpers" as helpers
   component "Enums" as enums
 }
@@ -125,19 +174,25 @@ package "Shared Library" as shared_lib {
 gateway_nats_client --> nats_server : "Publish/Subscribe"
 products_handlers <-- nats_server : "Message Events"
 orders_handlers <-- nats_server : "Message Events"
+auth_handlers <-- nats_server : "Message Events"
 
 ' Database connections
 products_prisma_client --> sqlite_db : "SQL Queries"
 orders_prisma_client --> postgres_db : "SQL Queries"
+auth_prisma_client --> mongo_db : "NoSQL Queries"
 
 ' Shared library dependencies
 gateway_package ..> shared_lib : "imports"
 products_package ..> shared_lib : "imports"
 orders_package ..> shared_lib : "imports"
+auth_package ..> shared_lib : "imports"
 
 ' Notes
 note right of nats_server
   Message Patterns:
+  - auth.register
+  - auth.login
+  - auth.validate
   - product.validate
   - product.validated
   - order.create
@@ -158,6 +213,14 @@ note right of postgres_db
   - OrderItems table
   - Health checks enabled
   - Managed by Prisma migrations
+end note
+
+note right of mongo_db
+  Collections:
+  - Users collection
+  - Replica set enabled
+  - Health checks enabled
+  - Managed by Prisma schema
 end note
 
 @enduml

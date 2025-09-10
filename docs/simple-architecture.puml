@@ -1,59 +1,102 @@
-@startuml architecture
-title Microservices Architecture - Micro Store
+@startuml simple-architecture
+title Micro Store - Simplified Architecture Overview
 
-' External actors
-actor "Web Client" as web
-actor "Mobile Client" as mobile
+skinparam backgroundColor #F7F8FC
+skinparam shadowing false
 
-' Main components
-rectangle "API Gateway" as gateway #LightCoral
-rectangle "NATS Server" as nats #Orange
-rectangle "Products Service" as products #LightBlue
-rectangle "Orders Service" as orders #LightBlue
-database "SQLite" as sqlite #LightGreen
-database "PostgreSQL" as postgres #LightGreen
+' Define colors
+!define CLIENT_COLOR #E3F2FD
+!define GATEWAY_COLOR #FFF3E0
+!define SERVICE_COLOR #E8F5E8
+!define DATABASE_COLOR #FCE4EC
+!define MESSAGE_COLOR #F3E5F5
 
-' Shared library
-package "Shared DTOs" as shared #Plum
+' External Clients
+rectangle "**Clients**" as clients CLIENT_COLOR {
+  [Web App]
+  [Mobile App]
+  [Desktop App]
+}
 
-' Connections
-web --> gateway : HTTP/REST
-mobile --> gateway : HTTP/REST
+' API Gateway
+rectangle "**API Gateway**\n:3000" as gateway GATEWAY_COLOR
 
-gateway --> nats : Publish/Subscribe
-nats --> products : Events
-nats --> orders : Events
+' Message Broker
+hexagon "**NATS**\n:4222" as nats MESSAGE_COLOR
 
-products --> sqlite : ORM Queries
-orders --> postgres : ORM Queries
+' Microservices
+rectangle "**Auth Service**\n:3003" as auth SERVICE_COLOR
+rectangle "**Products Service**\n:3001" as products SERVICE_COLOR  
+rectangle "**Orders Service**\n:3002" as orders SERVICE_COLOR
 
-gateway ..> shared : imports
-products ..> shared : imports
-orders ..> shared : imports
+' Databases
+database "**MongoDB**\n:27017" as mongodb DATABASE_COLOR
+database "**SQLite**\ndev.db" as sqlite DATABASE_COLOR
+database "**PostgreSQL**\n:5432" as postgres DATABASE_COLOR
+
+' Client connections
+clients --> gateway : "HTTP REST\nAPI Calls"
+
+' Gateway to NATS
+gateway --> nats : "Publish/Subscribe\nMessages"
+
+' Services to NATS
+auth <--> nats : "Event-driven\nCommunication"
+products <--> nats : "Event-driven\nCommunication"
+orders <--> nats : "Event-driven\nCommunication"
+
+' Database connections
+auth --> mongodb : "User Data\nAuthentication"
+products --> sqlite : "Products\nInventory"
+orders --> postgres : "Orders\nTransactions"
 
 ' Notes
-note right of gateway
-  Port: 3000
-  Routes requests
-  Authentication
-end note
-
-note right of nats
-  Ports: 4222, 8222
-  Message broker
-  Event-driven communication
+note right of auth
+  **Authentication Service**
+  • User registration & login
+  • JWT token generation
+  • Token validation
+  • Password encryption
 end note
 
 note right of products
-  Port: 3001
-  Product catalog
-  Inventory management
+  **Products Service**
+  • Product catalog
+  • Inventory management
+  • Stock validation
+  • Product search
 end note
 
 note right of orders
-  Port: 3002
-  Order processing
-  Payment integration
+  **Orders Service**
+  • Order processing
+  • Order management
+  • Payment integration
+  • Order history
+end note
+
+note right of mongodb
+  **MongoDB Database**
+  • Users collection
+  • Replica set enabled
+  • Health checks
+  • Prisma ORM
+end note
+
+note right of sqlite
+  **SQLite Database**
+  • Products table
+  • Categories table
+  • Local development
+  • Prisma migrations
+end note
+
+note right of postgres
+  **PostgreSQL Database**
+  • Orders table
+  • Order items table
+  • ACID compliance
+  • Health checks
 end note
 
 @enduml

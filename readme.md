@@ -7,9 +7,11 @@
 El proyecto implementa un patrón de microservicios con los siguientes componentes:
 
 - **Gateway**: API REST que actúa como punto único de entrada
+- **Auth Service**: Gestión de autenticación y autorización de usuarios
 - **Products Service**: Gestión de catálogo de productos e inventario
 - **Orders Service**: Procesamiento de órdenes y gestión de pagos
 - **NATS**: Message broker para comunicación asíncrona entre servicios
+- **MongoDB**: Base de datos para el servicio de autenticación
 - **PostgreSQL**: Base de datos para el servicio de órdenes
 - **SQLite**: Base de datos para el servicio de productos
 
@@ -94,10 +96,12 @@ npm start            # Reiniciar servicios
 | Servicio     | Puerto | URL                   | Descripción                |
 | ------------ | ------ | --------------------- | -------------------------- |
 | Gateway      | 3000   | http://localhost:3000 | API REST principal         |
+| Auth         | 3003   | http://localhost:3003 | API de autenticación       |
 | Products     | 3001   | http://localhost:3001 | API de productos (interno) |
 | Orders       | 3002   | http://localhost:3002 | API de órdenes (interno)   |
 | NATS         | 4222   | nats://localhost:4222 | Message broker             |
 | NATS Monitor | 8222   | http://localhost:8222 | Monitoreo NATS             |
+| MongoDB      | 27017  | localhost:27017       | Base de datos auth         |
 | PostgreSQL   | 5432   | localhost:5432        | Base de datos órdenes      |
 
 ## 🛠️ Configuración de Desarrollo
@@ -151,12 +155,14 @@ micro-store/
 │   ├── prepare.js          # Preparación de servicios (deps + build)
 │   └── update-shared.js    # Actualización de librerías
 ├── services/               # Microservicios (clonados automáticamente)
+│   ├── auth/              # Servicio de autenticación
 │   ├── gateway/           # API Gateway
 │   ├── products/          # Servicio de productos
 │   └── orders/            # Servicio de órdenes
 ├── shared/                # Librerías compartidas
 │   └── src/
 │       ├── common/        # DTOs y utilities comunes
+│       ├── auth/          # DTOs de autenticación
 │       ├── products/      # DTOs de productos
 │       └── orders/        # DTOs de órdenes
 ├── docker-compose.yml     # Configuración Docker
@@ -169,7 +175,8 @@ micro-store/
 - **Backend**: NestJS (Node.js + TypeScript)
 - **Message Broker**: NATS
 - **ORM**: Prisma
-- **Bases de Datos**: PostgreSQL, SQLite
+- **Bases de Datos**: PostgreSQL, SQLite, MongoDB
+- **Autenticación**: JWT (JSON Web Tokens)
 - **Containerización**: Docker, Docker Compose
 - **Validación**: class-validator, class-transformer
 - **Documentación**: PlantUML para diagramas
@@ -177,6 +184,7 @@ micro-store/
 ## 📚 Documentación Adicional
 
 - [Diagramas de Arquitectura](./docs/README.md) - Diagramas UML detallados
+- [Auth Service](./services/auth/README.md) - Servicio de autenticación
 - [Gateway Service](./services/gateway/README.md) - Documentación del Gateway
 - [Products Service](./services/products/README.md) - Servicio de productos
 - [Orders Service](./services/orders/README.md) - Servicio de órdenes

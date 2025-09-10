@@ -1,65 +1,139 @@
 @startuml sequence
-title Order Creation Flow - Microservices Communication
+title Authentication & Order Creation Flow - Microservices Communication
 
 skinparam backgroundColor #F7F8FC
-
-title Order Creation Flow - Microservices Communication
 
 actor "Client" as client
 participant "Gateway" as gateway
 participant "NATS" as nats
+participant "Auth Service" as auth
 participant "Products Service" as products
 participant "Orders Service" as orders
+database "Auth DB" as auth_db
 database "Products DB" as products_db
 database "Orders DB" as orders_db
 
-== Order Creation Process ==
+== User Registration ==
 
-client -> gateway : POST /orders\n{productId, quantity}
+client -> gateway : POST /auth/register\n{email, name, password}
 activate gateway
 
-gateway -> nats : publish("product.validate", {productId, quantity})
+gateway -> nats : publish("auth.register", userData)
 activate nats
 
-nats -> products : receive("product.validate")
-activate products
+nats -> auth : receive("auth.register")
+activate auth
 
-products -> products_db : findProduct(productId)
-activate products_db
-products_db --> products : product data
-deactivate products_db
+auth -> auth_db : createUser(userData)
+activate auth_db
+auth_db --> auth : user created
+deactivate auth_db
 
-products -> products_db : updateStock(productId, -quantity)
-activate products_db
-products_db --> products : stock updated
-deactivate products_db
+auth -> nats : publish("auth.user.registered", {userId, email})
+deactivate auth
 
-products -> nats : publish("product.validated", {productId, available: true})
-deactivate products
-
-nats -> orders : receive("product.validated")
-activate orders
-
-orders -> orders_db : createOrder({productId, quantity, status: "pending"})
-activate orders_db
-orders_db --> orders : order created
-deactivate orders_db
-
-orders -> nats : publish("order.created", {orderId, status: "created"})
-deactivate orders
-
-nats -> gateway : receive("order.created")
+nats -> gateway : receive("auth.user.registered")
 deactivate nats
 
-gateway --> client : 201 Created\n{orderId, status: "created"}
+gateway --> client : 201 Created\n{userId, message: "User registered"}
+deactivate gateway
+
+== User Login ==
+
+client -> gateway : POST /auth/login\n{email, password}
+activate gateway
+
+gateway -> nats : publish("auth.login", {email, password})
+activate nats
+
+nats -> auth : receive("auth.login")
+activate auth
+
+auth -> auth_db : validateUser(email, password)
+activate auth_db
+auth_db --> auth : user validated
+deactivate auth_db
+
+auth -> auth : generateJWT(user)
+auth -> nats : publish("auth.login.success", {token, user})
+deactivate auth
+
+nats -> gateway : receive("auth.login.success")
+deactivate nats
+
+gateway --> client : 200 OK\n{token, user}
+deactivate gateway
+
+== Protected Order Creation ==
+
+client -> gateway : POST /orders\n{productId, quantity}\nAuthorization: Bearer token
+activate gateway
+
+gateway -> nats : publish("auth.validate", {token})
+activate nats
+
+nats -> auth : receive("auth.validate")
+activate auth
+
+auth -> auth : validateJWT(token)
+auth -> nats : publish("auth.token.valid", {userId, isValid: true})
+deactivate auth
+
+nats -> gateway : receive("auth.token.valid")
+
+alt token is valid
+    gateway -> nats : publish("product.validate", {productId, quantity, userId})
+    
+    nats -> products : receive("product.validate")
+    activate products
+    
+    products -> products_db : findProduct(productId)
+    activate products_db
+    products_db --> products : product data
+    deactivate products_db
+    
+    products -> products_db : updateStock(productId, -quantity)
+    activate products_db
+    products_db --> products : stock updated
+    deactivate products_db
+    
+    products -> nats : publish("product.validated", {productId, available: true, userId})
+    deactivate products
+    
+    nats -> orders : receive("product.validated")
+    activate orders
+    
+    orders -> orders_db : createOrder({productId, quantity, userId, status: "pending"})
+    activate orders_db
+    orders_db --> orders : order created
+    deactivate orders_db
+    
+    orders -> nats : publish("order.created", {orderId, status: "created", userId})
+    deactivate orders
+    
+    nats -> gateway : receive("order.created")
+    deactivate nats
+    
+    gateway --> client : 201 Created\n{orderId, status: "created"}
+
+else token is invalid
+    auth -> nats : publish("auth.token.invalid", {error: "Invalid token"})
+    nats -> gateway : receive("auth.token.invalid")
+    deactivate nats
+    
+    gateway --> client : 401 Unauthorized\n{error: "Invalid token"}
+end
+
 deactivate gateway
 
 == Alternative: Product Not Available ==
 
-client -> gateway : POST /orders\n{productId, quantity}
+client -> gateway : POST /orders\n{productId, quantity}\nAuthorization: Bearer token
 activate gateway
 
-gateway -> nats : publish("product.validate", {productId, quantity})
+note over gateway, auth : Authentication flow (same as above)
+
+gateway -> nats : publish("product.validate", {productId, quantity, userId})
 activate nats
 
 nats -> products : receive("product.validate")
